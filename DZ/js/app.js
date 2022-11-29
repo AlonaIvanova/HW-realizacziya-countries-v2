@@ -1,6 +1,5 @@
 function buildStorage() {
   let countries = [];
-
   return {
     setCountries: newCountries => countries = newCountries,
     getCountries: () => countries
@@ -8,65 +7,117 @@ function buildStorage() {
 }
 const storage = buildStorage();
 
-function filteredCountries(valueSearch){
-    const searchCountry = storage.getCountries();
-    const result = searchCountry.filter(country => country.name.toLowerCase().indexOf(valueSearch) >=0);
-    document.querySelector('.search-btn').onclick = () =>{  
-      renderCountries(result);
-    };
-    document.querySelector('.clear-btn').onclick = () => {
-      document.querySelector('.search').value = '';
-      renderCountries();
-    }
+const buildCountryTable = document.createElement("table");
+buildCountryTable.id = "table";
+buildCountryTable.className = "table table-bordered table-striped";
+buildCountryTable.innerHTML = `<thead><tr>
+   <th>Name</th>
+   <th>Capital</th>
+   <th>Region</th>
+   <th>Population</th>
+   <th>Area</th>
+   </tr></thead><tbody></tbody>`;
+document.querySelector(".mainContent").append(buildCountryTable);
+
+function renderCountries(allCountries) {
+    htmlStr = allCountries.reduce((acc, country) => acc + `<tr>
+        <td>${country.name}</td>
+        <td>${country.capital}</td>
+        <td>${country.region}</td>
+        <td>${country.population}</td>
+        <td>${country.area}</td>
+    </tr>`, '');
+    document.querySelector("tbody").innerHTML = htmlStr; 
 }
 
-function renderCountries(countries) {
-  let countriesElement = document.createElement('table');
-  countriesElement.className = 'table table-bordered table-striped';
-  let htmlStr = countries.reduce((acc, country) => {
-        return acc + `<tr>
-            <td>${country.name}</td>
-            <td>${country.capital}</td>
-            <td>${country.area}</td>
-            <td>${country.region}</td>
-            <td>${country.population}</td>
-            <td class="text-center"><img class="w-25" src="${country.flags.png}" alt="flag"></td>
-        </tr>` 
-    }, '');
-  countriesElement.innerHTML = `<thead><tr>
-      <th data-sort="name">Name</th>
-      <th data-sort="capital">Capital</th>
-      <th data-sort="area">Area</th>
-      <th data-sort="region">Region</th>
-      <th data-sort="population">Population</th>
-      <th class="text-center">Flag</th>
-      </tr></thead>
-      <tbody>${htmlStr}</tbody>`;
-  document.querySelector('.mainContent').append(countriesElement);
+function getCountries() {
+    fetch('https://restcountries.com/v2/all')
+    .then(res => res.json())
+    .then(data => {
+        const filteredData = data.map((country) => {
+          return {
+            name: country.name,
+            capital: country.capital,
+            region: country.region,
+            population: country.population,
+            area: country.area,
+        }
+    });
+    renderCountries(filteredData);
+    storage.setCountries(filteredData);
+})
 }
 
-document.querySelector('.search').value = '';
-document.querySelector('.search').onkeyup = e =>{
-  const valueSearch = e.currentTarget.value.trim().toLowerCase();
-  filteredCountries(valueSearch);
-}
-
-fetch('https://restcountries.com/v2/all')
-  .then(response => response.json())
-  .then(data => {
-    const countriesFilter = data.map((country) => {
-      return {
-        name: country.name,
-        capital: country.capital,
-        area: country.area,
-        region: country.region,
-        population: country.population
+function getCountryByName(countryName) {
+    fetch(`https://restcountries.com/v2/name/${countryName}`)
+    .then(res => res.json())
+    .then(data => {
+        const filteredData = data.map((country) => {
+        return {
+          name: country.name,
+          capital: country.capital,
+          area: country.area,
+          region: country.region,
+          population: country.population
       }
     });
-    storage.setCountries(countriesFilter);
-    renderCountries(data);
-  })
+        renderCountries(filteredData);
+        storage.setCountries(filteredData);
+    })
+    .catch((error) => {
+        console.error("Error:", error);
+        notFound();
+    });
+}
 
+function getCountryByCapital(CapitalName) {
+    fetch(`https://restcountries.com/v2/name/${CapitalName}`)
+    .then(res => res.json())
+    .then(data => {
+        const filteredData = data.map((capital) => {
+        return {
+          capital: capital.name
+        }
+      });
+        renderCountries(filteredData);
+        storage.setCountries(filteredData);
+    })
+    .catch((error) => {
+        console.error("Error:", error);
+        notFound();
+    });
+}
 
-  
-  
+function notFound() {
+    let htmlStr = "";
+    htmlStr += `<tr><td colspan='5' class="text-center"> Not found </td></tr>`;
+    document.querySelector("tbody").innerHTML = htmlStr;
+}
+
+function enterTheCountry() {
+    const searchField = document.querySelector(".search");
+    searchField.onkeyup = e => {
+        const searchCountry = e.currentTarget.value.trim().toLowerCase();
+        searchButton(searchCountry);
+    }   
+}
+    document.querySelector(".search").addEventListener("change", enterTheCountry());
+
+function searchButton(searchCountry) {
+    const searchBtn = document.querySelector(".search-btn");
+    searchBtn.onclick = () => {
+        getCountryByName(searchCountry);
+    }  
+}
+
+function clearSearch() {
+    const clearBtn = document.querySelector(".clear-btn")
+    clearBtn.onclick = () => {
+        const searchField = document.querySelector(".search")
+        searchField.value = "";
+        getCountries();
+    }  
+}
+    document.querySelector(".clear-btn").addEventListener("click", clearSearch());
+
+getCountries();
